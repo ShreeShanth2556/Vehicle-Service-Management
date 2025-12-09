@@ -26,23 +26,31 @@ def is_mechanic(user):
 @user_passes_test(is_customer)
 def customer_invoice_view(request):
     customer = models.Customer.objects.get(user_id=request.user.id)
-    enquiries = models.Request.objects.filter(customer_id=customer.id).exclude(status='Pending')
 
-    # Get last cost or 0 if none
-    if enquiries.exists():
-        amount_rupees = enquiries.last().cost
-    else:
-        amount_rupees = 0
+    # 🔹 Only include requests that should be paid now
+    #    (you can adjust statuses if you want)
+    enquiries = models.Request.objects.filter(
+        customer_id=customer.id
+    ).filter(Q(status='Approved') | Q(status='Repairing Done'))
 
+    # 🔹 Total of all those costs
+    total_data = enquiries.aggregate(total_cost=Sum('cost'))
+    amount_rupees = total_data['total_cost'] or 0
+
+    # Razorpay expects paise (₹1 = 100)
     amount = int(amount_rupees * 100)
 
-    client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+    payment = None
+    if amount > 0:
+        client = razorpay.Client(
+            auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
+        )
 
-    payment = client.order.create({
-        "amount": amount,
-        "currency": "INR",
-        "payment_capture": 1
-    })
+        payment = client.order.create({
+            "amount": amount,
+            "currency": "INR",
+            "payment_capture": 1
+        })
 
     context = {
         "payment": payment,
@@ -795,6 +803,29 @@ def contactus_view(request):
             return render(request, 'vehicle/contactussuccess.html')
     return render(request, 'vehicle/contactus.html', {'form':sub})
 
+@login_required(login_url='customerlogin')
+@user_passes_test(is_customer)
 def payment_success(request):
-    return render(request, "vehicle/payment_success.html")
+    customer = models.Customer.objects.get(user_id=request.user.id)
+
+    # 🔹 All requests that were just paid for
+    pending_qs = models.Request.objects.filter(
+        customer_id=customer.id
+    ).filter(Q(status='Approved') | Q(status='Repairing Done'))
+
+    # Mark them as "Released" (treated as paid)
+    pending_qs.update(status='Released')
+
+    # 🔹 Check if any payable items still left (should be 0 now)
+    still_pending = models.Request.objects.filter(
+        customer_id=customer.id
+    ).filter(Q(status='Approved') | Q(status='Repairing Done'))
+    total_pending = still_pending.aggregate(total_cost=Sum('cost'))['total_cost'] or 0
+
+    return render(
+        request,
+        "vehicle/payment_success.html",
+        {"customer": customer, "total_pending": total_pending},
+    )
+
 

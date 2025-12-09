@@ -1,2 +1,9 @@
-<h2>Payment Successful!</h2>
-<p>Thank you for your payment.</p>
+<h2>Payment Successful ✅</h2>
+
+{% if total_pending == 0 %}
+  <p>No pending payments.</p>
+{% else %}
+  <p>Pending amount remaining: ₹{{ total_pending }}</p>
+{% endif %}
+
+<a href="{% url 'customer-dashboard' %}">Go to Dashboard</a>
