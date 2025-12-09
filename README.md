@@ -2,7 +2,7 @@
 ---
 ## SCREENSHOTS
 ### Home Page
-![dashboard snap](https://github.com/sumitkumar1503/vehicleservicemanagement/blob/master/static/screenshots/home.png?raw=true)
+![dashboard snap](https://raw.githubusercontent.com/ShreeShanth2556/Vehicle-Service-Management/master/static/screenshots/home.png?raw=true)
 ### Admin Dashboard Dark theme
 ![dashboard snap](https://github.com/sumitkumar1503/vehicleservicemanagement/blob/master/static/screenshots/admin_dark.png?raw=true)
 ### Admin Dashboard Light theme
